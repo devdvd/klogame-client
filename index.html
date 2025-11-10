@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚽 KloGame</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header>
+            <div class="header-content">
+                <h1>🚽 KloGame</h1>
+                <div class="user-stats">
+                    <div class="stat">
+                        <span class="stat-label">Punkte</span>
+                        <span class="stat-value" id="total-points">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Besuche</span>
+                        <span class="stat-value" id="total-visits">0</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="sidebar-section">
+                    <h2>Editionen</h2>
+                    <div id="editions-list" class="editions-list">
+                        <div class="loading">Lade Editionen...</div>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h2>Aktive Edition</h2>
+                    <div id="active-edition" class="active-edition">
+                        <p class="no-selection">Keine Edition ausgewählt</p>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h2>Statistiken</h2>
+                    <div id="statistics" class="statistics">
+                        <div class="stat-row">
+                            <span>🟡 Pinkeln:</span>
+                            <span id="pee-count">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span>🟤 Kacken:</span>
+                            <span id="poop-count">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span>📍 Locations:</span>
+                            <span id="locations-count">0</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Map Container -->
+            <main class="map-container">
+                <div id="map"></div>
+
+                <!-- Visit Modal -->
+                <div id="visit-modal" class="modal hidden">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 id="modal-location-name">Location</h3>
+                            <button class="close-btn" id="close-modal">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div id="modal-location-info"></div>
+                            <div class="visit-buttons">
+                                <button class="visit-btn pee-btn" id="pee-btn">
+                                    <span class="icon">🟡</span>
+                                    <span class="label">Pinkeln</span>
+                                    <span class="points" id="pee-points">+10</span>
+                                </button>
+                                <button class="visit-btn poop-btn" id="poop-btn">
+                                    <span class="icon">🟤</span>
+                                    <span class="label">Kacken</span>
+                                    <span class="points" id="poop-points">+25</span>
+                                </button>
+                            </div>
+                            <div id="visit-history" class="visit-history"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Success Toast -->
+                <div id="toast" class="toast hidden">
+                    <span id="toast-message"></span>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script type="module" src="src/app.js"></script>
+</body>
+</html>
