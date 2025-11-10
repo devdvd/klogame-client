@@ -6,7 +6,8 @@ const STORAGE_KEYS = {
     ACTIVE_EDITION: 'klogame_active_edition',
     EDITIONS: 'klogame_editions',
     VISITS: 'klogame_visits',
-    STATS: 'klogame_stats'
+    STATS: 'klogame_stats',
+    SETTINGS: 'klogame_settings'
 };
 
 /**
@@ -221,4 +222,60 @@ export function importData(data) {
     } catch (error) {
         console.error('Error importing data:', error);
     }
+}
+
+/**
+ * Get game settings
+ */
+export function getSettings() {
+    try {
+        const data = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+        return data ? JSON.parse(data) : {
+            geoMode: false,
+            hardcoreMode: false,
+            maxDistance: 100 // meters
+        };
+    } catch (error) {
+        console.error('Error getting settings:', error);
+        return {
+            geoMode: false,
+            hardcoreMode: false,
+            maxDistance: 100
+        };
+    }
+}
+
+/**
+ * Save game settings
+ */
+export function saveSettings(settings) {
+    try {
+        // If hardcore mode is enabled, it cannot be disabled
+        const currentSettings = getSettings();
+        if (currentSettings.hardcoreMode && !settings.hardcoreMode) {
+            console.warn('Cannot disable hardcore mode once enabled');
+            settings.hardcoreMode = true;
+        }
+
+        localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
+    } catch (error) {
+        console.error('Error saving settings:', error);
+    }
+}
+
+/**
+ * Check if location has been visited with specific type
+ */
+export function hasVisitedWithType(editionId, locationId, type) {
+    const visits = getLocationVisits(editionId, locationId);
+    return visits.some(v => v.type === type);
+}
+
+/**
+ * Check if location is fully visited (can't visit anymore)
+ */
+export function isLocationComplete(editionId, locationId) {
+    const visits = getLocationVisits(editionId, locationId);
+    // Location is complete if any visit exists (one-time visit rule)
+    return visits.length > 0;
 }

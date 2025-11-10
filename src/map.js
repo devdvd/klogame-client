@@ -2,7 +2,7 @@
  * Map Management with Leaflet
  */
 
-import { hasVisited } from './storage.js';
+import { isLocationComplete } from './storage.js';
 
 let map = null;
 let markers = [];
@@ -69,7 +69,7 @@ export function loadEditionOnMap(edition, onLocationClick) {
 
     // Add markers for each location
     edition.locations.forEach(location => {
-        const visited = hasVisited(edition.id, location.id);
+        const visited = isLocationComplete(edition.id, location.id);
         const icon = createMarkerIcon(visited);
 
         const marker = L.marker(location.coordinates, { icon })

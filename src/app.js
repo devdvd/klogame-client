@@ -11,8 +11,12 @@ import {
     getEdition,
     saveVisit,
     getLocationVisits,
-    getStats
+    getStats,
+    getSettings,
+    saveSettings,
+    isLocationComplete
 } from './storage.js';
+import { isWithinRange, formatDistance } from './gps.js';
 
 // State
 let activeEdition = null;
@@ -196,7 +200,7 @@ function handleLocationClick(location) {
 /**
  * Show location modal
  */
-function showLocationModal(location) {
+async function showLocationModal(location) {
     // Set location name
     modalLocationName.textContent = location.name;
 
@@ -206,9 +210,47 @@ function showLocationModal(location) {
         .join('');
     modalLocationInfo.innerHTML = metadata;
 
-    // Set points
-    document.getElementById('pee-points').textContent = `+${location.points.pee}`;
-    document.getElementById('poop-points').textContent = `+${location.points.poop}`;
+    // Check if location is already visited
+    const alreadyVisited = isLocationComplete(activeEdition.id, location.id);
+
+    // Set points (Kacken includes Pinkeln)
+    const peePoints = location.points.pee;
+    const poopPoints = location.points.pee + location.points.poop; // Combined!
+
+    document.getElementById('pee-points').textContent = `+${peePoints}`;
+    document.getElementById('poop-points').textContent = `+${poopPoints}`;
+
+    // Check GPS if geo mode is enabled
+    const settings = getSettings();
+    const geoModeActive = settings.geoMode || settings.hardcoreMode;
+
+    let withinRange = true;
+    let distanceInfo = '';
+
+    if (geoModeActive) {
+        try {
+            const result = await isWithinRange(location.coordinates, settings.maxDistance);
+            withinRange = result.withinRange;
+            distanceInfo = `<p style="margin-top: 0.5rem; color: ${withinRange ? 'var(--success)' : 'var(--warning)'};">
+                📍 Entfernung: ${formatDistance(result.distance)}
+                ${withinRange ? '✓ In Reichweite' : '✗ Zu weit entfernt'}
+            </p>`;
+        } catch (error) {
+            console.error('GPS Error:', error);
+            distanceInfo = '<p style="margin-top: 0.5rem; color: var(--error);">📍 GPS nicht verfügbar</p>';
+            withinRange = false;
+        }
+    }
+
+    modalLocationInfo.innerHTML += distanceInfo;
+
+    // Disable buttons if already visited or not in range
+    peeBtn.disabled = alreadyVisited || !withinRange;
+    poopBtn.disabled = alreadyVisited || !withinRange;
+
+    if (alreadyVisited) {
+        modalLocationInfo.innerHTML += '<p style="margin-top: 0.5rem; color: var(--success); font-weight: 600;">✓ Bereits besucht</p>';
+    }
 
     // Load visit history
     loadVisitHistory(location);
@@ -246,7 +288,20 @@ function loadVisitHistory(location) {
 async function handleVisit(type) {
     if (!selectedLocation || !activeEdition) return;
 
-    const points = type === 'pinkeln' ? selectedLocation.points.pee : selectedLocation.points.poop;
+    // Check if already visited
+    if (isLocationComplete(activeEdition.id, selectedLocation.id)) {
+        showToast('Location bereits besucht!', 'error');
+        return;
+    }
+
+    // Calculate points: Kacken = Pinkeln + Kacken points
+    let points;
+    if (type === 'pinkeln') {
+        points = selectedLocation.points.pee;
+    } else {
+        // Kacken includes both!
+        points = selectedLocation.points.pee + selectedLocation.points.poop;
+    }
 
     try {
         // Save visit locally
@@ -271,10 +326,13 @@ async function handleVisit(type) {
         updateStatsDisplay();
         displayActiveEdition();
         updateMarkerAfterVisit(selectedLocation.id);
-        loadVisitHistory(selectedLocation);
+
+        // Close modal and show success
+        modal.classList.add('hidden');
 
         // Show success message
-        showToast(`+${points} Punkte für ${type === 'pinkeln' ? 'Pinkeln' : 'Kacken'}! 🎉`);
+        const emoji = type === 'pinkeln' ? '🟡' : '🟤';
+        showToast(`${emoji} +${points} Punkte! Location abgehakt! 🎉`);
     } catch (error) {
         console.error('Error recording visit:', error);
         showToast('Fehler beim Speichern', 'error');
@@ -330,6 +388,51 @@ function setupEventListeners() {
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             modal.classList.add('hidden');
+        }
+    });
+
+    // Settings toggles
+    const geoModeToggle = document.getElementById('geo-mode-toggle');
+    const hardcoreModeToggle = document.getElementById('hardcore-mode-toggle');
+
+    // Load settings
+    const settings = getSettings();
+    geoModeToggle.checked = settings.geoMode;
+    hardcoreModeToggle.checked = settings.hardcoreMode;
+
+    // Disable geo mode toggle if hardcore is on
+    if (settings.hardcoreMode) {
+        geoModeToggle.checked = true;
+        geoModeToggle.disabled = true;
+    }
+
+    // Geo mode toggle
+    geoModeToggle.addEventListener('change', (e) => {
+        const newSettings = getSettings();
+        newSettings.geoMode = e.target.checked;
+        saveSettings(newSettings);
+        showToast(e.target.checked ? '📍 Geo-Modus aktiviert' : 'Geo-Modus deaktiviert');
+    });
+
+    // Hardcore mode toggle
+    hardcoreModeToggle.addEventListener('change', (e) => {
+        if (e.target.checked) {
+            // Confirm hardcore mode
+            if (confirm('🔥 Hardcore-Modus aktivieren?\n\nDies aktiviert den Geo-Modus permanent und kann NICHT mehr deaktiviert werden!')) {
+                const newSettings = getSettings();
+                newSettings.hardcoreMode = true;
+                newSettings.geoMode = true;
+                saveSettings(newSettings);
+                geoModeToggle.checked = true;
+                geoModeToggle.disabled = true;
+                showToast('🔥 Hardcore-Modus aktiviert! Geo-Modus ist nun permanent an!', 'warning');
+            } else {
+                e.target.checked = false;
+            }
+        } else {
+            // Cannot disable hardcore mode
+            e.target.checked = true;
+            showToast('Hardcore-Modus kann nicht deaktiviert werden!', 'error');
         }
     });
 }
